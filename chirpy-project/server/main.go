@@ -3,22 +3,34 @@ package main
 import (
 	"log"
 	"net/http"
+	"sync/atomic"
 )
+
+type apiConfig struct {
+	fileserverHits atomic.Int32
+}
 
 func main() {
 	const filepath = "../client"
 	const port = "8080"
-	mux := http.NewServeMux()
-	mux.Handle("/app/", http.StripPrefix("/app", http.FileServer(http.Dir(filepath))))
+	apiCfg := apiConfig{
+		fileserverHits: atomic.Int32{},
+	}
 
-	mux.HandleFunc("/healthz", handlerReadiness)
+	mux := http.NewServeMux()
+	fsHandler := apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepath))))
+	mux.Handle("/app/", fsHandler)
+
+	mux.HandleFunc("GET /healthz", handlerReadiness)
+	mux.HandleFunc("POST /reset", apiCfg.handlerReset)
+	mux.HandleFunc("GET /metrics", apiCfg.handlerMetrics)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: mux,
 	}
 
-	log.Printf("Server is running on port:%s", port)
+	log.Printf("Server is running http://localhost:%s", port)
 
 	err := srv.ListenAndServe()
 	if err != nil {
