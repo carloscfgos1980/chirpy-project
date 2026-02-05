@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/carloscfgos1980/chirpy-project/internal/auth"
 )
@@ -14,6 +15,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	type response struct {
 		User
+		Token string `json:"token"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -35,6 +37,15 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusUnauthorized, "Incorrect email or password", err)
 		return
 	}
+	token, err := auth.MakeJWT(
+		user.ID,
+		cfg.jwtSecret,
+		24*7*time.Hour,
+	)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create JWT token", err)
+		return
+	}
 
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
@@ -43,5 +54,6 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 		},
+		Token: token,
 	})
 }
