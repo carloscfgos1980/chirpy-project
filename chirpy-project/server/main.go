@@ -19,16 +19,21 @@ type apiConfig struct {
 	platform       string
 	jwtSecret      string
 	polkaKey       string
+	port           string
 }
 
 func main() {
 	const filepath = "../client"
-	const port = "8080"
 
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
 		log.Fatal("DB_URL must be set")
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatal("PORT must be set")
 	}
 
 	platform := os.Getenv("PLATFORM")
@@ -54,6 +59,7 @@ func main() {
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
+		port:           port,
 		platform:       platform,
 		jwtSecret:      jwtSecret,
 		polkaKey:       polkaKey,
